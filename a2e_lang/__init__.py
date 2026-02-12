@@ -14,15 +14,19 @@ from .ast_nodes import (
 from .compiler import Compiler
 from .compiler_spec import SpecCompiler
 from .decompiler import Decompiler
+from .engine import ExecutionEngine, ExecutionResult
 from .errors import A2ELangError, CompileError, ParseError, ValidationError
 from .graph import generate_mermaid
+from .logging import ExecutionLogger, PipelineLog
 from .parser import parse
 from .prompts import format_prompt, get_template, list_templates
 from .recovery import recover, parse_with_recovery
+from .resilience import RetryPolicy, CircuitBreaker, execute_with_retry
 from .scoring import score_syntax
 from .simulator import Simulator, SimulationResult
 from .tokens import calculate_budget
 from .validator import Validator
+from .webhook import WebhookServer
 
 __all__ = [
     "parse",
@@ -40,6 +44,14 @@ __all__ = [
     "get_template",
     "list_templates",
     "score_syntax",
+    "ExecutionEngine",
+    "ExecutionResult",
+    "ExecutionLogger",
+    "PipelineLog",
+    "RetryPolicy",
+    "CircuitBreaker",
+    "execute_with_retry",
+    "WebhookServer",
     "Workflow",
     "Operation",
     "Property",

@@ -9,16 +9,19 @@ import sys
 from .compiler import Compiler
 from .compiler_spec import SpecCompiler
 from .decompiler import Decompiler
+from .engine import ExecutionEngine
 from .errors import A2ELangError
 from .graph import generate_mermaid
 from .parser import parse
 from .prompts import format_prompt, list_templates
 from .recovery import parse_with_recovery
+from .resilience import NO_RETRY, API_RETRY
 from .scoring import score_syntax
 from .simulator import Simulator
 from .tokens import calculate_budget
 from .validator import Validator
 from .watcher import watch_and_compile
+from .webhook import WebhookServer
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -77,6 +80,18 @@ def main(argv: list[str] | None = None) -> int:
     prompt_p.add_argument("--task", dest="task_desc", help="Task description for the prompt")
     prompt_p.add_argument("--list", action="store_true", dest="list_all", help="List available templates")
 
+    # run (execute)
+    run_p = sub.add_parser("run", help="Execute workflow with the native engine")
+    run_p.add_argument("file", help="Input .a2e file")
+    run_p.add_argument("--input", dest="input_file", help="JSON file with input data")
+    run_p.add_argument("--no-retry", action="store_true", help="Disable retry on failures")
+
+    # webhook
+    webhook_p = sub.add_parser("webhook", help="Start webhook server")
+    webhook_p.add_argument("file", help="Input .a2e file")
+    webhook_p.add_argument("--port", type=int, default=8080, help="Server port (default: 8080)")
+    webhook_p.add_argument("--host", default="0.0.0.0", help="Server host")
+
     args = parser.parse_args(argv)
 
     if not args.command:
@@ -123,6 +138,10 @@ def main(argv: list[str] | None = None) -> int:
                 return _cmd_tokens(source)
             elif args.command == "score":
                 return _cmd_score(source)
+            elif args.command == "run":
+                return _cmd_run(source, input_file=getattr(args, 'input_file', None), no_retry=getattr(args, 'no_retry', False))
+            elif args.command == "webhook":
+                return _cmd_webhook(source, host=args.host, port=args.port)
     except FileNotFoundError:
         print(f"Error: file not found: {args.file}", file=sys.stderr)
         return 1
@@ -302,6 +321,44 @@ def _cmd_prompt(
     print()
     print("=== USER PROMPT ===")
     print(result["user"])
+    return 0
+
+
+def _cmd_run(source: str, input_file: str | None = None, no_retry: bool = False) -> int:
+    workflow = parse(source)
+    errors = Validator().validate(workflow)
+    if errors:
+        for e in errors:
+            print(f"Validation error: {e}", file=sys.stderr)
+        return 1
+
+    input_data = None
+    if input_file:
+        try:
+            with open(input_file, encoding="utf-8") as f:
+                input_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error reading input file: {e}", file=sys.stderr)
+            return 1
+
+    policy = NO_RETRY if no_retry else API_RETRY
+    engine = ExecutionEngine(retry_policy=policy, input_data=input_data)
+    result = engine.execute(workflow)
+    print(result.summary())
+    return 0 if result.success else 1
+
+
+def _cmd_webhook(source: str, host: str = "0.0.0.0", port: int = 8080) -> int:
+    # Validate first
+    workflow = parse(source)
+    errors = Validator().validate(workflow)
+    if errors:
+        for e in errors:
+            print(f"Validation error: {e}", file=sys.stderr)
+        return 1
+
+    server = WebhookServer(source, host=host, port=port)
+    server.start()
     return 0
 
 

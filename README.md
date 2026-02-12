@@ -110,6 +110,9 @@ a2e-lang tokens <file>                       # Token budget analysis (DSL vs JSO
 a2e-lang score <file>                        # Syntax learnability score
 a2e-lang prompt [template] --task "..."      # Generate LLM prompt template
 a2e-lang prompt --list                       # List available templates
+a2e-lang run <file> [--input data.json]      # Execute workflow with native engine
+a2e-lang run <file> --no-retry               # Execute without retry on failures
+a2e-lang webhook <file> [--port 8080]        # Start webhook server for HTTP triggers
 ```
 
 > **💡 VSCode Extension**: Install from `vscode-extension/` for syntax highlighting, bracket matching, and code folding. See [vscode-extension/README.md](./vscode-extension/README.md).
@@ -164,14 +167,18 @@ a2e_lang/
 ├── tokens.py          # Token budget calculator (DSL vs JSONL)
 ├── prompts.py         # LLM prompt templates (GPT-4, Claude, Gemini, etc.)
 ├── scoring.py         # Syntax learnability scoring
+├── engine.py          # Native execution engine (8 op handlers)
+├── logging.py         # Structured logging (per-op timing)
+├── resilience.py      # Retry + circuit breaker
+├── webhook.py         # Webhook server (HTTP trigger)
 ├── errors.py          # Error types with source locations
-└── cli.py             # Command-line interface (11 commands)
+└── cli.py             # Command-line interface (13 commands)
 examples/
 ├── simple.a2e         # Basic 3-operation pipeline
 ├── full_workflow.a2e  # All 8 operation types demo
 └── test_workers_ai.py # LLM agent generates a2e-lang from natural language
 vscode-extension/          # VSCode syntax highlighting + LSP client
-tests/                 # 184 tests (pytest)
+tests/                 # 214 tests (pytest)
 ```
 
 ## Architecture

@@ -8,7 +8,7 @@
 - Configurable complexity limits (`max_operations`, `max_depth`, `max_conditions`)
 - Workflow visualization (`a2e-lang graph` → Mermaid)
 - Dry-run simulation (`a2e-lang simulate`)
-- **184 tests**
+- **214 tests**
 
 ## Phase 1: DX & Tooling
 
@@ -26,10 +26,10 @@
 
 ## Phase 3: Runtime & Observability
 
-- [ ] **Execution engine** — Native Python runtime for A2E workflows
-- [ ] **Structured logging** — Per-operation execution logs with timing metrics
-- [ ] **Webhook support** — Trigger workflows via HTTP
-- [ ] **Retry/circuit breaker** — Operation-level failure handling
+- [x] **Execution engine** — Native Python runtime for A2E workflows
+- [x] **Structured logging** — Per-operation execution logs with timing metrics
+- [x] **Webhook support** — Trigger workflows via HTTP
+- [x] **Retry/circuit breaker** — Operation-level failure handling
 
 ## Phase 4: Ecosystem
 
