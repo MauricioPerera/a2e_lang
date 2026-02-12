@@ -107,6 +107,10 @@ a2e-lang simulate <file> [--input data.json] # Dry-run workflow simulation
 a2e-lang decompile <file>                    # Convert JSONL back to .a2e DSL
 ```
 
+> **💡 VSCode Extension**: Install from `vscode-extension/` for syntax highlighting, bracket matching, and code folding. See [vscode-extension/README.md](./vscode-extension/README.md).
+>
+> **💡 LSP Server**: Run `python -m a2e_lang.lsp` for diagnostics, autocompletion, and hover info. Requires `pip install pygls`.
+
 | Flag | Description |
 |---|---|
 | `--spec` | Output in official A2E protocol format |
@@ -150,13 +154,15 @@ a2e_lang/
 ├── simulator.py       # Dry-run workflow simulation engine
 ├── decompiler.py      # JSONL → DSL (reverse compiler)
 ├── watcher.py         # File watcher for auto-recompilation
+├── lsp.py             # Language Server Protocol (diagnostics + completion)
 ├── errors.py          # Error types with source locations
 └── cli.py             # Command-line interface (7 commands)
 examples/
 ├── simple.a2e         # Basic 3-operation pipeline
 ├── full_workflow.a2e  # All 8 operation types demo
 └── test_workers_ai.py # LLM agent generates a2e-lang from natural language
-tests/                 # 151 tests (pytest)
+vscode-extension/          # VSCode syntax highlighting + LSP client
+tests/                 # 156 tests (pytest)
 ```
 
 ## Architecture

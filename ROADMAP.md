@@ -8,14 +8,14 @@
 - Configurable complexity limits (`max_operations`, `max_depth`, `max_conditions`)
 - Workflow visualization (`a2e-lang graph` → Mermaid)
 - Dry-run simulation (`a2e-lang simulate`)
-- **151 tests**
+- **156 tests**
 
 ## Phase 1: DX & Tooling
 
 - [x] **Watch mode** — `a2e-lang compile --watch` for auto-recompilation
 - [x] **Decompiler** — JSONL → a2e-lang DSL (reverse engineering existing workflows)
-- [ ] **VSCode extension** — Syntax highlighting for `.a2e` files
-- [ ] **LSP** — Language Server Protocol for autocompletion and inline errors
+- [x] **VSCode extension** — Syntax highlighting for `.a2e` files
+- [x] **LSP** — Language Server Protocol for autocompletion and inline errors
 
 ## Phase 2: LLM Optimization
 

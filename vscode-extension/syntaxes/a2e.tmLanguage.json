@@ -1,0 +1,159 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "a2e-lang",
+    "scopeName": "source.a2e",
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#workflow"
+        },
+        {
+            "include": "#run-declaration"
+        },
+        {
+            "include": "#operation-definition"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#numbers"
+        },
+        {
+            "include": "#constants"
+        },
+        {
+            "include": "#operators"
+        },
+        {
+            "include": "#paths"
+        },
+        {
+            "include": "#punctuation"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "name": "comment.line.number-sign.a2e",
+            "match": "#.*$"
+        },
+        "workflow": {
+            "match": "\\b(workflow)\\b\\s+(\"[^\"]*\")",
+            "captures": {
+                "1": {
+                    "name": "keyword.control.workflow.a2e"
+                },
+                "2": {
+                    "name": "string.quoted.double.a2e"
+                }
+            }
+        },
+        "run-declaration": {
+            "match": "\\b(run)\\s*:",
+            "captures": {
+                "1": {
+                    "name": "keyword.control.run.a2e"
+                }
+            }
+        },
+        "operation-definition": {
+            "patterns": [
+                {
+                    "comment": "Operation assignment: id = OpType {",
+                    "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(=)\\s*(ApiCall|FilterData|TransformData|Conditional|Loop|StoreData|Wait|MergeData|GetCurrentDateTime|ConvertTimezone|DateCalculation|FormatText|ExtractText|ValidateData|Calculate|EncodeDecode)\\b",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.function.a2e"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.a2e"
+                        },
+                        "3": {
+                            "name": "entity.name.type.a2e"
+                        }
+                    }
+                },
+                {
+                    "comment": "Clause keywords",
+                    "match": "\\b(from|where|if|then|else|credential)\\b",
+                    "name": "keyword.control.clause.a2e"
+                },
+                {
+                    "comment": "Output arrow",
+                    "match": "->",
+                    "name": "keyword.operator.arrow.a2e"
+                },
+                {
+                    "comment": "Property key (identifier followed by colon)",
+                    "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=:)",
+                    "captures": {
+                        "1": {
+                            "name": "variable.other.property.a2e"
+                        }
+                    }
+                }
+            ]
+        },
+        "strings": {
+            "name": "string.quoted.double.a2e",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.a2e",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "numbers": {
+            "name": "constant.numeric.a2e",
+            "match": "-?\\b\\d+(\\.\\d+)?\\b"
+        },
+        "constants": {
+            "patterns": [
+                {
+                    "name": "constant.language.boolean.a2e",
+                    "match": "\\b(true|false)\\b"
+                },
+                {
+                    "name": "constant.language.null.a2e",
+                    "match": "\\b(null)\\b"
+                }
+            ]
+        },
+        "operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.comparison.a2e",
+                    "match": "(>=|<=|==|!=|>|<)"
+                },
+                {
+                    "name": "keyword.operator.logical.a2e",
+                    "match": "\\b(in|contains|startsWith|endsWith|exists|empty)\\b"
+                }
+            ]
+        },
+        "paths": {
+            "name": "variable.other.path.a2e",
+            "match": "/[a-zA-Z0-9_./-]+"
+        },
+        "punctuation": {
+            "patterns": [
+                {
+                    "name": "punctuation.definition.block.a2e",
+                    "match": "[{}]"
+                },
+                {
+                    "name": "punctuation.definition.array.a2e",
+                    "match": "[\\[\\]]"
+                },
+                {
+                    "name": "punctuation.separator.comma.a2e",
+                    "match": ","
+                }
+            ]
+        }
+    }
+}

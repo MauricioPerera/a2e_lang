@@ -1,0 +1,58 @@
+{
+    "name": "a2e-lang",
+    "displayName": "a2e-lang",
+    "description": "Syntax highlighting for the a2e-lang DSL (A2E protocol compiler)",
+    "version": "0.1.0",
+    "publisher": "mauricioperera",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/MauricioPerera/a2e_lang"
+    },
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "activationEvents": [
+        "onLanguage:a2e"
+    ],
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "a2e",
+                "aliases": [
+                    "a2e-lang",
+                    "A2E"
+                ],
+                "extensions": [
+                    ".a2e"
+                ],
+                "configuration": "./language-configuration.json",
+                "icon": {
+                    "light": "./icon.png",
+                    "dark": "./icon.png"
+                }
+            }
+        ],
+        "grammars": [
+            {
+                "language": "a2e",
+                "scopeName": "source.a2e",
+                "path": "./syntaxes/a2e.tmLanguage.json"
+            }
+        ]
+    },
+    "scripts": {},
+    "extensionDependencies": [],
+    "__metadata": {
+        "lspServer": {
+            "command": "python",
+            "args": [
+                "-m",
+                "a2e_lang.lsp"
+            ],
+            "note": "Requires: pip install pygls. Configure in VSCode settings if python is not in PATH."
+        }
+    }
+}
