@@ -113,6 +113,10 @@ a2e-lang prompt --list                       # List available templates
 a2e-lang run <file> [--input data.json]      # Execute workflow with native engine
 a2e-lang run <file> --no-retry               # Execute without retry on failures
 a2e-lang webhook <file> [--port 8080]        # Start webhook server for HTTP triggers
+a2e-lang sourcemap <file> [--out map.json]   # Generate DSL->JSONL source map
+a2e-lang registry list                       # List installed workflows
+a2e-lang registry search <query>             # Search registry
+a2e-lang registry publish <file>             # Publish workflow
 ```
 
 > **💡 VSCode Extension**: Install from `vscode-extension/` for syntax highlighting, bracket matching, and code folding. See [vscode-extension/README.md](./vscode-extension/README.md).
@@ -171,8 +175,12 @@ a2e_lang/
 ├── logging.py         # Structured logging (per-op timing)
 ├── resilience.py      # Retry + circuit breaker
 ├── webhook.py         # Webhook server (HTTP trigger)
+├── registry.py        # Workflow registry (publish/discover)
+├── orchestrator.py    # Multi-agent workflow chaining
+├── plugins.py         # Custom operation type registration
+├── sourcemap.py       # DSL → JSONL source mapping
 ├── errors.py          # Error types with source locations
-└── cli.py             # Command-line interface (13 commands)
+└── cli.py             # Command-line interface (18 commands)
 examples/
 ├── simple.a2e         # Basic 3-operation pipeline
 ├── full_workflow.a2e  # All 8 operation types demo

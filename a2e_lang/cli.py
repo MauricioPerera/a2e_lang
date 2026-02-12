@@ -15,9 +15,11 @@ from .graph import generate_mermaid
 from .parser import parse
 from .prompts import format_prompt, list_templates
 from .recovery import parse_with_recovery
+from .registry import WorkflowRegistry
 from .resilience import NO_RETRY, API_RETRY
 from .scoring import score_syntax
 from .simulator import Simulator
+from .sourcemap import generate_source_map
 from .tokens import calculate_budget
 from .validator import Validator
 from .watcher import watch_and_compile
@@ -92,6 +94,37 @@ def main(argv: list[str] | None = None) -> int:
     webhook_p.add_argument("--port", type=int, default=8080, help="Server port (default: 8080)")
     webhook_p.add_argument("--host", default="0.0.0.0", help="Server host")
 
+    # sourcemap
+    sm_p = sub.add_parser("sourcemap", help="Generate source map (DSL -> JSONL)")
+    sm_p.add_argument("file", help="Input .a2e file")
+    sm_p.add_argument("--out", "-o", help="Output JSON file (default: stdout)")
+
+    # registry
+    reg_p = sub.add_parser("registry", help="Interact with workflow registry")
+    reg_sub = reg_p.add_subparsers(dest="reg_command", required=True)
+
+    # registry list
+    reg_sub.add_parser("list", help="List all installed workflows")
+
+    # registry search
+    reg_search = reg_sub.add_parser("search", help="Search workflows")
+    reg_search.add_argument("query", help="Search query (name, tag, or description)")
+
+    # registry show
+    reg_show = reg_sub.add_parser("show", help="Show workflow details")
+    reg_show.add_argument("name", help="Workflow name")
+
+    # registry publish
+    reg_pub = reg_sub.add_parser("publish", help="Publish workflow to local registry")
+    reg_pub.add_argument("file", help="Workflow file to publish")
+    reg_pub.add_argument("--name", help="Override workflow name")
+    reg_pub.add_argument("--author", help="Author name")
+    reg_pub.add_argument("--tag", action="append", dest="tags", help="Tags (can use multiple times)")
+    reg_pub.add_argument("--desc", dest="description", help="Description")
+
+    # registry remove
+    reg_rm = reg_sub.add_parser("remove", help="Remove workflow from registry")
+    reg_rm.add_argument("name", help="Workflow name")
     args = parser.parse_args(argv)
 
     if not args.command:
@@ -105,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
             task_desc=args.task_desc,
             list_all=args.list_all,
         )
+    elif args.command == "registry":
+        return _cmd_registry(args)
 
     try:
         if args.command == "compile":
@@ -138,6 +173,8 @@ def main(argv: list[str] | None = None) -> int:
                 return _cmd_tokens(source)
             elif args.command == "score":
                 return _cmd_score(source)
+            elif args.command == "sourcemap":
+                return _cmd_sourcemap(source, out_file=args.out)
             elif args.command == "run":
                 return _cmd_run(source, input_file=getattr(args, 'input_file', None), no_retry=getattr(args, 'no_retry', False))
             elif args.command == "webhook":
@@ -359,6 +396,97 @@ def _cmd_webhook(source: str, host: str = "0.0.0.0", port: int = 8080) -> int:
 
     server = WebhookServer(source, host=host, port=port)
     server.start()
+    return 0
+
+
+def _cmd_sourcemap(source: str, out_file: str | None = None) -> int:
+    try:
+        sm = generate_source_map(source)
+    except Exception as e:
+        print(f"Error generating source map: {e}", file=sys.stderr)
+        return 1
+
+    output = sm.to_json(pretty=True)
+    if out_file:
+        try:
+            with open(out_file, "w", encoding="utf-8") as f:
+                f.write(output)
+        except OSError as e:
+            print(f"Error writing to file: {e}", file=sys.stderr)
+            return 1
+    else:
+        print(output)
+    return 0
+
+
+def _cmd_registry(args) -> int:
+    reg = WorkflowRegistry()
+    cmd = args.reg_command
+
+    if cmd == "list":
+        for entry in reg.list_all():
+             print(entry.summary_line())
+        return 0
+
+    elif cmd == "search":
+        results = reg.search(args.query)
+        if not results:
+            print("No workflows found.")
+            return 0
+        for entry in results:
+            print(entry.summary_line())
+        return 0
+
+    elif cmd == "show":
+        entry = reg.get(args.name)
+        if not entry:
+            print(f"Workflow '{args.name}' not found.", file=sys.stderr)
+            return 1
+        print(f"Name:        {entry.name}")
+        print(f"Version:     {entry.version}")
+        print(f"Author:      {entry.author}")
+        print(f"Published:   {entry.published_at}")
+        print(f"Tags:        {', '.join(entry.tags)}")
+        print(f"Description: {entry.description}")
+        print("\nSource:")
+        print("-------")
+        print(entry.source)
+        return 0
+
+    elif cmd == "publish":
+        try:
+            source = _read_file(args.file)
+        except OSError as e:
+            print(f"Error reading file: {e}", file=sys.stderr)
+            return 1
+
+        # Validate before publishing
+        workflow = parse(source)
+        errors = Validator().validate(workflow)
+        if errors:
+            print("Validation failed:", file=sys.stderr)
+            for e in errors:
+                print(f"  {e}", file=sys.stderr)
+            return 1
+
+        name = args.name or workflow.name
+        entry = reg.publish(
+            name=name,
+            source=source,
+            author=args.author or "",
+            description=args.description or "",
+            tags=args.tags,
+        )
+        print(f"Published: {entry.summary_line()}")
+        return 0
+
+    elif cmd == "remove":
+        if reg.remove(args.name):
+            print(f"Removed '{args.name}'")
+        else:
+            print(f"Workflow '{args.name}' not found", file=sys.stderr)
+            return 1
+
     return 0
 
 

@@ -8,7 +8,7 @@
 - Configurable complexity limits (`max_operations`, `max_depth`, `max_conditions`)
 - Workflow visualization (`a2e-lang graph` → Mermaid)
 - Dry-run simulation (`a2e-lang simulate`)
-- **214 tests**
+- **246 tests**
 
 ## Phase 1: DX & Tooling
 
@@ -33,10 +33,10 @@
 
 ## Phase 4: Ecosystem
 
-- [ ] **Plugin system** — Register custom operation types
-- [ ] **Workflow registry** — Publish/discover reusable workflows
-- [ ] **Multi-agent orchestration** — Chain workflows across agents
-- [ ] **Source maps** — DSL → JSONL mapping for runtime debugging
+- [x] **Plugin system** — Register custom operation types
+- [x] **Workflow registry** — Publish and discover reusable workflows
+- [x] **Multi-agent orchestration** — Chain workflows (sequential/parallel)
+- [x] **Source maps** — Map runtime errors back to DSL linestime debugging
 
 ## Strategic Positioning
 
