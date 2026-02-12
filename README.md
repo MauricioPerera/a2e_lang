@@ -1,13 +1,22 @@
 # a2e-lang
 
-DSL compiler for the **A2E (Agent-to-Everything) protocol**. It compiles a human-readable domain-specific language into A2E JSONL format.
+DSL compiler for the **[A2E (Agent-to-Execution) Protocol](https://github.com/MauricioPerera/a2e)**. It compiles a human-readable domain-specific language into A2E JSONL format, enabling AI agents to generate workflows without writing verbose JSON.
 
-## Features
+## What is A2E?
 
-- **Compact Syntax**: Express complex agent workflows with minimal code.
-- **Strong Validation**: Integrated validator ensures A2E protocol compliance before compilation.
-- **Flexible AST**: Easily extend the language with new operation types.
-- **CLI Tool**: Simple command-line interface for compilation, validation, and debugging.
+A2E is a declarative protocol that enables AI agents to safely generate and execute workflows without arbitrary code execution. The protocol defines 8 core operations (`ApiCall`, `FilterData`, `TransformData`, `Conditional`, `Loop`, `StoreData`, `Wait`, `MergeData`) and uses JSONL as its transport format.
+
+See the [full A2E specification](https://github.com/MauricioPerera/a2e/blob/main/SPECIFICATION.md).
+
+## Why a2e-lang?
+
+Writing A2E workflows in raw JSONL is verbose and error-prone. `a2e-lang` provides a compact, readable syntax that compiles down to valid A2E JSONL:
+
+```
+a2e-lang DSL (human-readable)  →  A2E JSONL (machine-readable)
+```
+
+This is especially useful when AI agents (LLMs) generate workflows from natural language — the DSL is more concise than raw JSON, reducing token usage and generation errors.
 
 ## Installation
 
@@ -19,58 +28,95 @@ Requires Python 3.10+.
 
 ## Quick Start
 
-Create a file named `hello.a2e`:
+Create a file named `pipeline.a2e`:
 
 ```a2e
-workflow "Greeting Workflow"
+workflow "user-pipeline"
 
-hello = Message {
-    text: "Hello, World!"
+fetch_users = ApiCall {
+  method: "GET"
+  url: "https://api.example.com/users"
+  headers: { Authorization: credential("api-token") }
+  -> /workflow/users
 }
 
-run: hello
+filter_active = FilterData {
+  from /workflow/users
+  where status == "active", points > 100
+  -> /workflow/filtered
+}
+
+store = StoreData {
+  from /workflow/filtered
+  storage: "localStorage"
+  key: "active-users"
+}
+
+run: fetch_users -> filter_active -> store
 ```
 
-Compile it to JSONL:
+Compile it to A2E JSONL:
 
 ```bash
-a2e-lang compile hello.a2e
+a2e-lang compile pipeline.a2e
+a2e-lang compile pipeline.a2e --pretty  # indented output
 ```
 
 ## Project Structure
 
-- `a2e_lang/`: Core source code.
-  - `grammar.lark`: EBNF grammar for the DSL.
-  - `parser.py`: Lark-based parser that generates the AST.
-  - `ast_nodes.py`: Data models for the AST.
-  - `validator.py`: Semantic validator for the AST.
-  - `compiler.py`: Logic to transform AST into A2E JSONL.
-- `examples/`: Sample `.a2e` files showing various features.
-- `tests/`: Comprehensive test suite using `pytest`.
+```
+a2e_lang/
+├── grammar.lark      # Lark EBNF grammar for the DSL
+├── parser.py         # Lark-based parser → AST
+├── ast_nodes.py      # Immutable AST data models
+├── validator.py      # Semantic validator (8 checks)
+├── compiler.py       # AST → A2E JSONL
+├── errors.py         # Error types with source locations
+└── cli.py            # Command-line interface
+examples/
+├── simple.a2e        # Basic 3-operation pipeline
+├── full_workflow.a2e # All 8 operation types
+└── test_workers_ai.py # LLM agent generates a2e-lang from natural language
+tests/                # 24 tests (pytest)
+```
 
 ## Architecture
 
-The compilation process follows three main stages:
+The compilation follows three stages:
 
-1.  **Parsing**: The `parser.py` uses the `lark` library and `grammar.lark` to transform the source text into an Internal AST (defined in `ast_nodes.py`).
-2.  **Validation**: The `Validator` checks for semantic errors, such as missing connections or invalid property values.
-3.  **Compilation**: The `Compiler` traverses the validated AST and generates the standard A2E protocol JSONL output.
+1. **Parsing**: `grammar.lark` + Lark (Earley parser) → AST (immutable frozen dataclasses)
+2. **Validation**: 8 semantic checks (unique IDs, valid types, required props, cycle detection, etc.)
+3. **Compilation**: AST → A2E protocol JSONL (`operationUpdate` + `beginExecution`)
 
 ## CLI Usage
 
-```text
-usage: a2e-lang [-h] {compile,validate,ast} ...
-
-DSL compiler for the A2E protocol
-
-positional arguments:
-  {compile,validate,ast}
-    compile             Compile .a2e to JSONL
-    validate            Validate .a2e file without compiling
-    ast                 Show parsed AST (debug)
-
-optional arguments:
-  -h, --help            show this help message and exit
+```
+a2e-lang compile <file> [--pretty]  # Compile .a2e to JSONL
+a2e-lang validate <file>            # Validate without compiling
+a2e-lang ast <file>                 # Show parsed AST (debug)
 ```
 
-For detailed language reference, see [LANGUAGE.md](./LANGUAGE.md).
+## A2E Operations Supported
+
+All 8 core operations from the [A2E protocol spec](https://github.com/MauricioPerera/a2e/blob/main/SPECIFICATION.md):
+
+| Operation | Description |
+|---|---|
+| `ApiCall` | HTTP requests (GET, POST, PUT, DELETE, PATCH) |
+| `FilterData` | Array filtering with conditions |
+| `TransformData` | Data transformation (sort, select, map, group) |
+| `Conditional` | Conditional branching (if/then/else) |
+| `Loop` | Array iteration |
+| `StoreData` | Persistent storage |
+| `Wait` | Execution delay |
+| `MergeData` | Merge multiple data sources |
+
+Plus 8 additional utility operations: `GetCurrentDateTime`, `ConvertTimezone`, `DateCalculation`, `FormatText`, `ExtractText`, `ValidateData`, `Calculate`, `EncodeDecode`.
+
+## Language Reference
+
+See [LANGUAGE.md](./LANGUAGE.md) for the complete DSL syntax reference.
+
+## Related
+
+- **[A2E Protocol](https://github.com/MauricioPerera/a2e)** — The protocol specification this compiler targets

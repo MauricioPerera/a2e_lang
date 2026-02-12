@@ -12,6 +12,7 @@ from .ast_nodes import (
     Workflow,
 )
 from .compiler import Compiler
+from .compiler_spec import SpecCompiler
 from .errors import A2ELangError, CompileError, ParseError, ValidationError
 from .parser import parse
 from .validator import Validator
@@ -19,6 +20,7 @@ from .validator import Validator
 __all__ = [
     "parse",
     "Compiler",
+    "SpecCompiler",
     "Validator",
     "Workflow",
     "Operation",

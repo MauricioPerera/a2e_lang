@@ -7,6 +7,7 @@ import json
 import sys
 
 from .compiler import Compiler
+from .compiler_spec import SpecCompiler
 from .errors import A2ELangError
 from .parser import parse
 from .validator import Validator
@@ -23,6 +24,7 @@ def main(argv: list[str] | None = None) -> int:
     compile_p = sub.add_parser("compile", help="Compile .a2e to JSONL")
     compile_p.add_argument("file", help="Input .a2e file")
     compile_p.add_argument("--pretty", action="store_true", help="Pretty-print output")
+    compile_p.add_argument("--spec", action="store_true", help="Use official A2E spec format (one line per operation)")
 
     # validate
     validate_p = sub.add_parser("validate", help="Validate .a2e file without compiling")
@@ -46,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "compile":
-            return _cmd_compile(source, pretty=args.pretty)
+            return _cmd_compile(source, pretty=args.pretty, spec=args.spec)
         elif args.command == "validate":
             return _cmd_validate(source)
         elif args.command == "ast":
@@ -63,7 +65,7 @@ def _read_file(path: str) -> str:
         return f.read()
 
 
-def _cmd_compile(source: str, pretty: bool = False) -> int:
+def _cmd_compile(source: str, pretty: bool = False, spec: bool = False) -> int:
     workflow = parse(source)
 
     validator = Validator()
@@ -73,7 +75,7 @@ def _cmd_compile(source: str, pretty: bool = False) -> int:
             print(f"Validation error: {e}", file=sys.stderr)
         return 1
 
-    compiler = Compiler()
+    compiler = SpecCompiler() if spec else Compiler()
     if pretty:
         output = compiler.compile_pretty(workflow)
     else:
