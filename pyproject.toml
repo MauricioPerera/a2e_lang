@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "a2e-lang"
+version = "0.1.0"
+description = "DSL compiler for the A2E protocol — compiles compact DSL to A2E JSONL"
+requires-python = ">=3.10"
+dependencies = ["lark>=1.1.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+a2e-lang = "a2e_lang.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

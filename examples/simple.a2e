@@ -1,0 +1,23 @@
+# Simple A2E workflow: fetch users and filter active ones
+workflow "user-pipeline"
+
+fetch_users = ApiCall {
+  method: "GET"
+  url: "https://api.example.com/users"
+  headers: { Authorization: credential("api-token") }
+  -> /workflow/users
+}
+
+filter_active = FilterData {
+  from /workflow/users
+  where status == "active", points > 100
+  -> /workflow/filtered
+}
+
+store = StoreData {
+  from /workflow/filtered
+  storage: "localStorage"
+  key: "active-users"
+}
+
+run: fetch_users -> filter_active -> store

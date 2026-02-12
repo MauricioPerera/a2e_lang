@@ -1,0 +1,78 @@
+// a2e-lang grammar — Lark EBNF
+// Compiles to A2E protocol JSONL
+
+start: workflow_decl (operation_def)* run_decl?
+
+// --- Top-level declarations ---
+
+workflow_decl: "workflow" ESCAPED_STRING
+
+operation_def: IDENT "=" IDENT "{" op_body_item* "}"
+
+run_decl: "run" ":" IDENT ("->" IDENT)*
+
+// --- Operation body items (no separators needed) ---
+
+?op_body_item: from_clause
+             | where_clause
+             | if_clause
+             | output_arrow
+             | property
+
+property: prop_key ":" value
+
+?prop_key: IDENT | ESCAPED_STRING
+
+from_clause: "from" path
+
+where_clause: "where" condition ("," condition)*
+
+if_clause: "if" path COMPARE_OP value? "then" ident_list ("else" ident_list)?
+
+output_arrow: "->" path
+
+// --- Conditions ---
+
+condition: IDENT COMPARE_OP value
+
+ident_list: IDENT ("," IDENT)*
+
+// --- Values ---
+
+?value: ESCAPED_STRING  -> string_val
+      | SIGNED_NUMBER   -> number_val
+      | "true"          -> true_val
+      | "false"         -> false_val
+      | "null"          -> null_val
+      | path            -> path_val
+      | credential
+      | object
+      | array
+      | IDENT           -> ident_val
+
+path: PATH
+
+object: "{" (property ("," property)*)? "}"
+
+array: "[" (value ("," value)*)? "]"
+
+credential: "credential" "(" ESCAPED_STRING ")"
+
+// --- Terminals ---
+
+COMPARE_OP: ">=" | "<=" | "==" | "!=" | ">" | "<"
+          | "in" | "contains" | "startsWith" | "endsWith"
+          | "exists" | "empty"
+
+PATH: /\/[a-zA-Z0-9_.\/-]+/
+
+IDENT: /[a-zA-Z_][a-zA-Z0-9_]*/
+
+COMMENT: /#[^\n]*/
+
+%import common.ESCAPED_STRING
+%import common.SIGNED_NUMBER
+%import common.WS
+
+%ignore WS
+%ignore COMMENT

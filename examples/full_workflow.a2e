@@ -1,0 +1,88 @@
+# Full A2E workflow demonstrating all 8 core operations
+workflow "full-demo"
+
+# 1. ApiCall — fetch data from external API
+fetch_users = ApiCall {
+  method: "GET"
+  url: "https://api.example.com/users"
+  headers: {
+    Authorization: credential("api-token"),
+    "Content-Type": "application/json"
+  }
+  timeout: 30000
+  -> /workflow/raw-response
+}
+
+# 2. TransformData — extract user array from response
+extract = TransformData {
+  from /workflow/raw-response
+  transform: "select"
+  config: { field: "data.users" }
+  -> /workflow/users
+}
+
+# 3. FilterData — keep only active users with high points
+filter_active = FilterData {
+  from /workflow/users
+  where status == "active", points > 100
+  -> /workflow/filtered
+}
+
+# 4. TransformData — sort by points descending
+sort_users = TransformData {
+  from /workflow/filtered
+  transform: "sort"
+  config: { field: "points", order: "desc" }
+  -> /workflow/sorted
+}
+
+# 5. Conditional — branch based on result count
+check_results = Conditional {
+  if /workflow/sorted > 0
+  then store_result
+  else handle_empty
+}
+
+# 6. StoreData — persist results
+store_result = StoreData {
+  from /workflow/sorted
+  storage: "localStorage"
+  key: "top-users"
+}
+
+# 7. StoreData — handle empty case
+handle_empty = StoreData {
+  from /workflow/sorted
+  storage: "localStorage"
+  key: "empty-result"
+}
+
+# 8. Wait — pause before next step
+pause = Wait {
+  duration: 2000
+}
+
+# 9. ApiCall — fetch additional stats
+fetch_stats = ApiCall {
+  method: "GET"
+  url: "https://api.example.com/stats"
+  headers: { Authorization: credential("api-token") }
+  -> /workflow/stats
+}
+
+# 10. MergeData — combine users and stats
+combined = MergeData {
+  sources: [/workflow/sorted, /workflow/stats]
+  strategy: "deepMerge"
+  -> /workflow/combined
+}
+
+# 11. Loop — process each user
+process_each = Loop {
+  from /workflow/sorted
+  operations: [fetch_stats]
+  -> /workflow/processed
+}
+
+# Execution order
+run: fetch_users -> extract -> filter_active -> sort_users -> check_results
