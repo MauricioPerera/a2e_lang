@@ -9,7 +9,9 @@ import sys
 from .compiler import Compiler
 from .compiler_spec import SpecCompiler
 from .errors import A2ELangError
+from .graph import generate_mermaid
 from .parser import parse
+from .simulator import Simulator
 from .validator import Validator
 
 
@@ -34,6 +36,18 @@ def main(argv: list[str] | None = None) -> int:
     ast_p = sub.add_parser("ast", help="Show parsed AST (debug)")
     ast_p.add_argument("file", help="Input .a2e file")
 
+    # graph
+    graph_p = sub.add_parser("graph", help="Generate Mermaid flowchart")
+    graph_p.add_argument("file", help="Input .a2e file")
+
+    # simulate
+    sim_p = sub.add_parser("simulate", help="Dry-run workflow simulation")
+    sim_p.add_argument("file", help="Input .a2e file")
+    sim_p.add_argument("--input", dest="input_file", help="JSON file with mock data")
+    sim_p.add_argument("--max-operations", type=int, default=None, help="Max operations limit")
+    sim_p.add_argument("--max-depth", type=int, default=None, help="Max nesting depth limit")
+    sim_p.add_argument("--max-conditions", type=int, default=None, help="Max conditions per operation")
+
     args = parser.parse_args(argv)
 
     if not args.command:
@@ -53,6 +67,16 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_validate(source)
         elif args.command == "ast":
             return _cmd_ast(source)
+        elif args.command == "graph":
+            return _cmd_graph(source)
+        elif args.command == "simulate":
+            return _cmd_simulate(
+                source,
+                input_file=args.input_file,
+                max_operations=args.max_operations,
+                max_depth=args.max_depth,
+                max_conditions=args.max_conditions,
+            )
     except A2ELangError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -130,6 +154,49 @@ def _fmt_value(val) -> str:
     if isinstance(val, str):
         return repr(val)
     return str(val)
+
+
+def _cmd_graph(source: str) -> int:
+    workflow = parse(source)
+    print(generate_mermaid(workflow))
+    return 0
+
+
+def _cmd_simulate(
+    source: str,
+    input_file: str | None = None,
+    max_operations: int | None = None,
+    max_depth: int | None = None,
+    max_conditions: int | None = None,
+) -> int:
+    workflow = parse(source)
+
+    # Validate with optional complexity limits
+    validator = Validator(
+        max_operations=max_operations,
+        max_depth=max_depth,
+        max_conditions=max_conditions,
+    )
+    errors = validator.validate(workflow)
+    if errors:
+        for e in errors:
+            print(f"Validation error: {e}", file=sys.stderr)
+        return 1
+
+    # Load mock data
+    input_data = None
+    if input_file:
+        try:
+            with open(input_file, encoding="utf-8") as f:
+                input_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error reading input file: {e}", file=sys.stderr)
+            return 1
+
+    simulator = Simulator()
+    result = simulator.simulate(workflow, input_data=input_data)
+    print(result.summary())
+    return 0
 
 
 if __name__ == "__main__":

@@ -102,21 +102,31 @@ All operations bundled in a single `operationUpdate` message:
 a2e-lang compile <file> [--spec] [--pretty]  # Compile .a2e to JSONL
 a2e-lang validate <file>                     # Validate without compiling
 a2e-lang ast <file>                          # Show parsed AST (debug)
+a2e-lang graph <file>                        # Generate Mermaid flowchart
+a2e-lang simulate <file> [--input data.json] # Dry-run workflow simulation
 ```
 
 | Flag | Description |
 |---|---|
 | `--spec` | Output in official A2E protocol format |
 | `--pretty` | Pretty-print JSON output (indented) |
+| `--input` | JSON file with mock data for simulation |
+| `--max-operations` | Max operations limit (simulate) |
+| `--max-depth` | Max nesting depth limit (simulate) |
+| `--max-conditions` | Max conditions per operation (simulate) |
 
 ## Python API
 
 ```python
 from a2e_lang import parse, Validator, Compiler, SpecCompiler
+from a2e_lang import Simulator, generate_mermaid
 
 # Parse and validate
 workflow = parse(open("pipeline.a2e").read())
 errors = Validator().validate(workflow)
+
+# Validate with complexity limits (protects against LLM-generated bloat)
+errors = Validator(max_operations=20, max_depth=3, max_conditions=5).validate(workflow)
 
 # Compile — choose your format
 jsonl_spec   = SpecCompiler().compile(workflow)       # Official A2E format
@@ -131,37 +141,43 @@ a2e_lang/
 ├── grammar.lark       # Lark EBNF grammar for the DSL
 ├── parser.py          # Lark-based parser → AST
 ├── ast_nodes.py       # Immutable AST data models (frozen dataclasses)
-├── validator.py       # Semantic validator (8 checks)
+├── validator.py       # Semantic validator (9 checks + complexity limits)
 ├── compiler.py        # AST → Legacy bundled JSONL
 ├── compiler_spec.py   # AST → Official A2E spec JSONL
+├── graph.py           # AST → Mermaid flowchart
+├── simulator.py       # Dry-run workflow simulation engine
 ├── errors.py          # Error types with source locations
-└── cli.py             # Command-line interface
+└── cli.py             # Command-line interface (6 commands)
 examples/
 ├── simple.a2e         # Basic 3-operation pipeline
 ├── full_workflow.a2e  # All 8 operation types demo
 └── test_workers_ai.py # LLM agent generates a2e-lang from natural language
-tests/                 # 115 tests (pytest)
+tests/                 # 140 tests (pytest)
 ```
 
 ## Architecture
 
-The compilation follows three stages:
+The pipeline has three core stages plus visualization and simulation:
 
 1. **Parsing**: `grammar.lark` + Lark (Earley parser) → AST (immutable frozen dataclasses)
-2. **Validation**: 8 semantic checks (unique IDs, valid types, required props, cycle detection, etc.)
+2. **Validation**: 9 semantic checks + configurable complexity limits
 3. **Compilation**: AST → A2E protocol JSONL via `Compiler` or `SpecCompiler`
+4. **Visualization**: AST → Mermaid flowchart via `graph.py`
+5. **Simulation**: Dry-run execution with condition evaluation via `simulator.py`
 
 ```
                         ┌─────────────┐
                    ┌──► │  Compiler   │ ──► Legacy JSONL
-┌──────┐  ┌─────┐ │    └─────────────┘
-│.a2e  │─►│Parse│─►│
-│source│  │+ AST│  │    ┌─────────────┐
-└──────┘  └──┬──┘  └──► │SpecCompiler │ ──► A2E Spec JSONL
-             │          └─────────────┘
-         ┌───▼────┐
-         │Validate│
-         └────────┘
+                   │    └─────────────┘
+┌──────┐  ┌─────┐  │    ┌─────────────┐
+│.a2e  │─►│Parse│──┼──► │SpecCompiler │ ──► A2E Spec JSONL
+│source│  │+ AST│  │    └─────────────┘
+└──────┘  └──┬──┘  │    ┌─────────────┐
+             │     ├──► │   Graph     │ ──► Mermaid
+         ┌───▼────┐│    └─────────────┘
+         │Validate││    ┌─────────────┐
+         └────────┘└──► │  Simulator  │ ──► Execution Trace
+                        └─────────────┘
 ```
 
 ## A2E Operations Supported
@@ -184,6 +200,10 @@ Plus 8 additional utility operations: `GetCurrentDateTime`, `ConvertTimezone`, `
 ## Language Reference
 
 See [LANGUAGE.md](./LANGUAGE.md) for the complete DSL syntax reference.
+
+## Roadmap
+
+See [ROADMAP.md](./ROADMAP.md) for the strategic roadmap.
 
 ## Related
 

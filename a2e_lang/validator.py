@@ -67,11 +67,29 @@ UNARY_OPS = {"exists", "empty"}
 
 
 class Validator:
-    """Validates a2e-lang AST for semantic correctness."""
+    """Validates a2e-lang AST for semantic correctness.
+
+    Args:
+        max_operations: Maximum number of operations allowed (None = unlimited).
+        max_depth: Maximum nesting depth via Conditional/Loop branches (None = unlimited).
+        max_conditions: Maximum number of conditions per operation (None = unlimited).
+    """
+
+    def __init__(
+        self,
+        *,
+        max_operations: int | None = None,
+        max_depth: int | None = None,
+        max_conditions: int | None = None,
+    ):
+        self.max_operations = max_operations
+        self.max_depth = max_depth
+        self.max_conditions = max_conditions
 
     def validate(self, workflow: Workflow) -> list[ValidationError]:
         """Run all validations and return a list of errors (empty = valid)."""
         errors: list[ValidationError] = []
+        errors += self._validate_complexity(workflow)
         errors += self._validate_unique_ids(workflow)
         errors += self._validate_op_types(workflow)
         errors += self._validate_required_properties(workflow)
@@ -80,6 +98,68 @@ class Validator:
         errors += self._validate_loop_operations(workflow)
         errors += self._validate_execution_order(workflow)
         errors += self._validate_no_cycles(workflow)
+        return errors
+
+    def _validate_complexity(self, workflow: Workflow) -> list[ValidationError]:
+        """Check workflow complexity against configured limits."""
+        errors: list[ValidationError] = []
+
+        # Max operations
+        if self.max_operations is not None:
+            count = len(workflow.operations)
+            if count > self.max_operations:
+                errors.append(ValidationError(
+                    f"Workflow has {count} operations, maximum allowed is {self.max_operations}"
+                ))
+
+        # Max conditions per operation
+        if self.max_conditions is not None:
+            for op in workflow.operations:
+                if op.conditions and len(op.conditions) > self.max_conditions:
+                    errors.append(ValidationError(
+                        f"Operation '{op.id}' has {len(op.conditions)} conditions, "
+                        f"maximum allowed is {self.max_conditions}",
+                        line=op.line,
+                        column=op.column,
+                    ))
+
+        # Max depth (Conditional/Loop nesting)
+        if self.max_depth is not None:
+            op_map = {op.id: op for op in workflow.operations}
+            branching_types = {"Conditional", "Loop"}
+
+            def _measure_depth(op_id: str, visited: set[str]) -> int:
+                if op_id in visited or op_id not in op_map:
+                    return 0
+                op = op_map[op_id]
+                if op.op_type not in branching_types:
+                    return 0
+                visited.add(op_id)
+                child_depths = []
+                if op.if_clause:
+                    for target in op.if_clause.if_true:
+                        child_depths.append(_measure_depth(target, visited))
+                    if op.if_clause.if_false:
+                        for target in op.if_clause.if_false:
+                            child_depths.append(_measure_depth(target, visited))
+                ops_prop = _find_property(op, "operations")
+                if ops_prop and isinstance(ops_prop.value, ArrayValue):
+                    for item in ops_prop.value.items:
+                        if isinstance(item, str):
+                            child_depths.append(_measure_depth(item, visited))
+                return 1 + max(child_depths, default=0)
+
+            for op in workflow.operations:
+                if op.op_type in branching_types:
+                    depth = _measure_depth(op.id, set())
+                    if depth > self.max_depth:
+                        errors.append(ValidationError(
+                            f"Operation '{op.id}' has nesting depth {depth}, "
+                            f"maximum allowed is {self.max_depth}",
+                            line=op.line,
+                            column=op.column,
+                        ))
+
         return errors
 
     def _validate_unique_ids(self, workflow: Workflow) -> list[ValidationError]:

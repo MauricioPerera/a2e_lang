@@ -14,7 +14,9 @@ from .ast_nodes import (
 from .compiler import Compiler
 from .compiler_spec import SpecCompiler
 from .errors import A2ELangError, CompileError, ParseError, ValidationError
+from .graph import generate_mermaid
 from .parser import parse
+from .simulator import Simulator, SimulationResult
 from .validator import Validator
 
 __all__ = [
@@ -22,6 +24,9 @@ __all__ = [
     "Compiler",
     "SpecCompiler",
     "Validator",
+    "Simulator",
+    "SimulationResult",
+    "generate_mermaid",
     "Workflow",
     "Operation",
     "Property",
