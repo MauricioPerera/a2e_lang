@@ -19,25 +19,31 @@ my_op = ApiCall {
 ```
 
 ### Execution Order
-The `run` statement defines the starting operation and the execution sequence:
+The `run` statement defines the execution sequence:
 ```a2e
 run: first_op -> second_op -> third_op
 ```
-This maps to the A2E `beginExecution.operationOrder` array.
+
+In `--spec` mode this maps to `beginExecution.operationOrder`:
+```json
+{"type":"beginExecution","executionId":"...","operationOrder":["first_op","second_op","third_op"]}
+```
 
 ## Operation Body
 
 Within an operation `{}` block, you can define:
 
-- **Properties**: `key: value`
-- **Input path**: `from /workflow/path` → maps to `inputPath`
-- **Output path**: `-> /workflow/path` → maps to `outputPath`
-- **Filter conditions**: `where field == "value"` → maps to `conditions[]`
-- **Conditional branching**: `if /path == "X" then op1 else op2` → maps to `condition` + `ifTrue`/`ifFalse`
+| DSL syntax | A2E JSON field | Description |
+|---|---|---|
+| `key: value` | `"key": value` | Property |
+| `from /workflow/path` | `"inputPath"` | Data input source |
+| `-> /workflow/path` | `"outputPath"` | Data output destination |
+| `where field == "val"` | `"conditions"` | Filter conditions |
+| `if /path > 0 then a else b` | `"condition"` + `"ifTrue"`/`"ifFalse"` | Conditional branching |
 
 ## Data Types
 
-| Type | Syntax | A2E JSON equivalent |
+| Type | DSL Syntax | A2E JSON equivalent |
 |---|---|---|
 | String | `"double quoted"` | `"string"` |
 | Number | `123`, `45.67` | `123`, `45.67` |
@@ -67,7 +73,8 @@ workflow "example"
 
 ## Full Example
 
-This a2e-lang source:
+### Source (pipeline.a2e)
+
 ```a2e
 workflow "user-pipeline"
 
@@ -93,8 +100,102 @@ store = StoreData {
 run: fetch_users -> filter_active -> store
 ```
 
-Compiles to this A2E JSONL:
+### Output with `--spec` (official A2E format)
+
+```bash
+a2e-lang compile pipeline.a2e --spec
+```
+
 ```jsonl
-{"operationUpdate":{"workflowId":"user-pipeline","operations":[{"id":"fetch_users","operation":{"ApiCall":{"outputPath":"/workflow/users","method":"GET","url":"https://api.example.com/users","headers":{"Authorization":{"credentialRef":{"id":"api-token"}}}}}},{"id":"filter_active","operation":{"FilterData":{"inputPath":"/workflow/users","outputPath":"/workflow/filtered","conditions":[{"field":"status","operator":"==","value":"active"},{"field":"points","operator":">","value":100}]}}},{"id":"store","operation":{"StoreData":{"inputPath":"/workflow/filtered","storage":"localStorage","key":"active-users"}}}]}}
+{"type":"operationUpdate","operationId":"fetch_users","operation":{"ApiCall":{"outputPath":"/workflow/users","method":"GET","url":"https://api.example.com/users","headers":{"Authorization":{"credentialRef":{"id":"api-token"}}}}}}
+{"type":"operationUpdate","operationId":"filter_active","operation":{"FilterData":{"inputPath":"/workflow/users","outputPath":"/workflow/filtered","conditions":[{"field":"status","operator":"==","value":"active"},{"field":"points","operator":">","value":100}]}}}
+{"type":"operationUpdate","operationId":"store","operation":{"StoreData":{"inputPath":"/workflow/filtered","storage":"localStorage","key":"active-users"}}}
+{"type":"beginExecution","executionId":"user-pipeline","operationOrder":["fetch_users","filter_active","store"]}
+```
+
+### Output without `--spec` (legacy bundled format)
+
+```bash
+a2e-lang compile pipeline.a2e
+```
+
+```jsonl
+{"operationUpdate":{"workflowId":"user-pipeline","operations":[{"id":"fetch_users","operation":{"ApiCall":{...}}},{"id":"filter_active","operation":{"FilterData":{...}}},{"id":"store","operation":{"StoreData":{...}}}]}}
 {"beginExecution":{"workflowId":"user-pipeline","root":"fetch_users"}}
+```
+
+## Operation Reference
+
+### ApiCall
+```a2e
+fetch = ApiCall {
+  method: "GET"                                # Required: HTTP method
+  url: "https://api.example.com/users"         # Required: endpoint URL
+  headers: { Authorization: credential("key") } # Optional: HTTP headers
+  body: { name: "test", value: 42 }            # Optional: request body
+  timeout: 30000                               # Optional: timeout in ms
+  -> /workflow/response                        # Required: output path
+}
+```
+
+### FilterData
+```a2e
+filter = FilterData {
+  from /workflow/users                         # Required: input path
+  where status == "active", points > 100       # Required: filter conditions
+  -> /workflow/filtered                        # Required: output path
+}
+```
+
+### TransformData
+```a2e
+transform = TransformData {
+  from /workflow/data                          # Required: input path
+  transform: "sort"                            # Required: sort|select|map|group
+  config: { field: "name", order: "asc" }      # Optional: transform config
+  -> /workflow/sorted                          # Required: output path
+}
+```
+
+### Conditional
+```a2e
+check = Conditional {
+  if /workflow/count > 0                       # Required: condition
+  then process_op                              # Required: true branch
+  else fallback_op                             # Optional: false branch
+}
+```
+
+### Loop
+```a2e
+loop = Loop {
+  from /workflow/items                         # Required: input array
+  operations: [process_item]                   # Required: ops per iteration
+  -> /workflow/results                         # Optional: output path
+}
+```
+
+### StoreData
+```a2e
+store = StoreData {
+  from /workflow/data                          # Required: input path
+  storage: "localStorage"                      # Required: storage type
+  key: "my-data"                               # Required: storage key
+}
+```
+
+### Wait
+```a2e
+pause = Wait {
+  duration: 5000                               # Required: milliseconds
+}
+```
+
+### MergeData
+```a2e
+merged = MergeData {
+  sources: [/workflow/a, /workflow/b]           # Required: input paths
+  strategy: "deepMerge"                        # Required: concat|union|intersect|deepMerge
+  -> /workflow/combined                        # Required: output path
+}
 ```

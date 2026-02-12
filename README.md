@@ -55,29 +55,92 @@ store = StoreData {
 run: fetch_users -> filter_active -> store
 ```
 
-Compile it to A2E JSONL:
+Compile it:
 
 ```bash
+# Official A2E spec format (recommended)
+a2e-lang compile pipeline.a2e --spec
+
+# Pretty-printed
+a2e-lang compile pipeline.a2e --spec --pretty
+
+# Legacy bundled format
 a2e-lang compile pipeline.a2e
-a2e-lang compile pipeline.a2e --pretty  # indented output
+```
+
+## Output Formats
+
+### `--spec` — Official A2E Protocol Format (recommended)
+
+One JSONL line per operation, matching the [A2E specification](https://github.com/MauricioPerera/a2e/blob/main/SPECIFICATION.md):
+
+```jsonl
+{"type":"operationUpdate","operationId":"fetch_users","operation":{"ApiCall":{"outputPath":"/workflow/users","method":"GET","url":"https://api.example.com/users"}}}
+{"type":"operationUpdate","operationId":"filter_active","operation":{"FilterData":{"inputPath":"/workflow/users","outputPath":"/workflow/filtered","conditions":[{"field":"status","operator":"==","value":"active"}]}}}
+{"type":"operationUpdate","operationId":"store","operation":{"StoreData":{"inputPath":"/workflow/filtered","storage":"localStorage","key":"active-users"}}}
+{"type":"beginExecution","executionId":"user-pipeline","operationOrder":["fetch_users","filter_active","store"]}
+```
+
+Each message has:
+- `"type"` — Message type (`operationUpdate` or `beginExecution`)
+- `"operationId"` — Unique operation identifier
+- `"executionId"` — Workflow name as execution ID
+- `"operationOrder"` — Full execution sequence
+
+### Default — Legacy Bundled Format
+
+All operations bundled in a single `operationUpdate` message:
+
+```jsonl
+{"operationUpdate":{"workflowId":"user-pipeline","operations":[...]}}
+{"beginExecution":{"workflowId":"user-pipeline","root":"fetch_users"}}
+```
+
+## CLI Usage
+
+```
+a2e-lang compile <file> [--spec] [--pretty]  # Compile .a2e to JSONL
+a2e-lang validate <file>                     # Validate without compiling
+a2e-lang ast <file>                          # Show parsed AST (debug)
+```
+
+| Flag | Description |
+|---|---|
+| `--spec` | Output in official A2E protocol format |
+| `--pretty` | Pretty-print JSON output (indented) |
+
+## Python API
+
+```python
+from a2e_lang import parse, Validator, Compiler, SpecCompiler
+
+# Parse and validate
+workflow = parse(open("pipeline.a2e").read())
+errors = Validator().validate(workflow)
+
+# Compile — choose your format
+jsonl_spec   = SpecCompiler().compile(workflow)       # Official A2E format
+jsonl_legacy = Compiler().compile(workflow)            # Legacy bundled format
+jsonl_pretty = SpecCompiler().compile_pretty(workflow) # Pretty-printed
 ```
 
 ## Project Structure
 
 ```
 a2e_lang/
-├── grammar.lark      # Lark EBNF grammar for the DSL
-├── parser.py         # Lark-based parser → AST
-├── ast_nodes.py      # Immutable AST data models
-├── validator.py      # Semantic validator (8 checks)
-├── compiler.py       # AST → A2E JSONL
-├── errors.py         # Error types with source locations
-└── cli.py            # Command-line interface
+├── grammar.lark       # Lark EBNF grammar for the DSL
+├── parser.py          # Lark-based parser → AST
+├── ast_nodes.py       # Immutable AST data models (frozen dataclasses)
+├── validator.py       # Semantic validator (8 checks)
+├── compiler.py        # AST → Legacy bundled JSONL
+├── compiler_spec.py   # AST → Official A2E spec JSONL
+├── errors.py          # Error types with source locations
+└── cli.py             # Command-line interface
 examples/
-├── simple.a2e        # Basic 3-operation pipeline
-├── full_workflow.a2e # All 8 operation types
+├── simple.a2e         # Basic 3-operation pipeline
+├── full_workflow.a2e  # All 8 operation types demo
 └── test_workers_ai.py # LLM agent generates a2e-lang from natural language
-tests/                # 24 tests (pytest)
+tests/                 # 115 tests (pytest)
 ```
 
 ## Architecture
@@ -86,14 +149,19 @@ The compilation follows three stages:
 
 1. **Parsing**: `grammar.lark` + Lark (Earley parser) → AST (immutable frozen dataclasses)
 2. **Validation**: 8 semantic checks (unique IDs, valid types, required props, cycle detection, etc.)
-3. **Compilation**: AST → A2E protocol JSONL (`operationUpdate` + `beginExecution`)
-
-## CLI Usage
+3. **Compilation**: AST → A2E protocol JSONL via `Compiler` or `SpecCompiler`
 
 ```
-a2e-lang compile <file> [--pretty]  # Compile .a2e to JSONL
-a2e-lang validate <file>            # Validate without compiling
-a2e-lang ast <file>                 # Show parsed AST (debug)
+                        ┌─────────────┐
+                   ┌──► │  Compiler   │ ──► Legacy JSONL
+┌──────┐  ┌─────┐ │    └─────────────┘
+│.a2e  │─►│Parse│─►│
+│source│  │+ AST│  │    ┌─────────────┐
+└──────┘  └──┬──┘  └──► │SpecCompiler │ ──► A2E Spec JSONL
+             │          └─────────────┘
+         ┌───▼────┐
+         │Validate│
+         └────────┘
 ```
 
 ## A2E Operations Supported
