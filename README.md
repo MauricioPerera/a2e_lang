@@ -104,12 +104,14 @@ a2e-lang validate <file>                     # Validate without compiling
 a2e-lang ast <file>                          # Show parsed AST (debug)
 a2e-lang graph <file>                        # Generate Mermaid flowchart
 a2e-lang simulate <file> [--input data.json] # Dry-run workflow simulation
+a2e-lang decompile <file>                    # Convert JSONL back to .a2e DSL
 ```
 
 | Flag | Description |
 |---|---|
 | `--spec` | Output in official A2E protocol format |
 | `--pretty` | Pretty-print JSON output (indented) |
+| `--watch` | Watch file and recompile on changes |
 | `--input` | JSON file with mock data for simulation |
 | `--max-operations` | Max operations limit (simulate) |
 | `--max-depth` | Max nesting depth limit (simulate) |
@@ -119,7 +121,7 @@ a2e-lang simulate <file> [--input data.json] # Dry-run workflow simulation
 
 ```python
 from a2e_lang import parse, Validator, Compiler, SpecCompiler
-from a2e_lang import Simulator, generate_mermaid
+from a2e_lang import Simulator, Decompiler, generate_mermaid
 
 # Parse and validate
 workflow = parse(open("pipeline.a2e").read())
@@ -146,13 +148,15 @@ a2e_lang/
 ├── compiler_spec.py   # AST → Official A2E spec JSONL
 ├── graph.py           # AST → Mermaid flowchart
 ├── simulator.py       # Dry-run workflow simulation engine
+├── decompiler.py      # JSONL → DSL (reverse compiler)
+├── watcher.py         # File watcher for auto-recompilation
 ├── errors.py          # Error types with source locations
-└── cli.py             # Command-line interface (6 commands)
+└── cli.py             # Command-line interface (7 commands)
 examples/
 ├── simple.a2e         # Basic 3-operation pipeline
 ├── full_workflow.a2e  # All 8 operation types demo
 └── test_workers_ai.py # LLM agent generates a2e-lang from natural language
-tests/                 # 140 tests (pytest)
+tests/                 # 151 tests (pytest)
 ```
 
 ## Architecture

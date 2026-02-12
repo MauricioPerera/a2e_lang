@@ -13,6 +13,7 @@ from .ast_nodes import (
 )
 from .compiler import Compiler
 from .compiler_spec import SpecCompiler
+from .decompiler import Decompiler
 from .errors import A2ELangError, CompileError, ParseError, ValidationError
 from .graph import generate_mermaid
 from .parser import parse
@@ -23,6 +24,7 @@ __all__ = [
     "parse",
     "Compiler",
     "SpecCompiler",
+    "Decompiler",
     "Validator",
     "Simulator",
     "SimulationResult",

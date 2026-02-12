@@ -8,11 +8,13 @@ import sys
 
 from .compiler import Compiler
 from .compiler_spec import SpecCompiler
+from .decompiler import Decompiler
 from .errors import A2ELangError
 from .graph import generate_mermaid
 from .parser import parse
 from .simulator import Simulator
 from .validator import Validator
+from .watcher import watch_and_compile
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -27,6 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     compile_p.add_argument("file", help="Input .a2e file")
     compile_p.add_argument("--pretty", action="store_true", help="Pretty-print output")
     compile_p.add_argument("--spec", action="store_true", help="Use official A2E spec format (one line per operation)")
+    compile_p.add_argument("--watch", action="store_true", help="Watch file and recompile on changes")
 
     # validate
     validate_p = sub.add_parser("validate", help="Validate .a2e file without compiling")
@@ -48,6 +51,10 @@ def main(argv: list[str] | None = None) -> int:
     sim_p.add_argument("--max-depth", type=int, default=None, help="Max nesting depth limit")
     sim_p.add_argument("--max-conditions", type=int, default=None, help="Max conditions per operation")
 
+    # decompile
+    decompile_p = sub.add_parser("decompile", help="Convert JSONL back to .a2e DSL")
+    decompile_p.add_argument("file", help="Input JSONL file")
+
     args = parser.parse_args(argv)
 
     if not args.command:
@@ -55,21 +62,14 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        source = _read_file(args.file)
-    except FileNotFoundError:
-        print(f"Error: file not found: {args.file}", file=sys.stderr)
-        return 1
-
-    try:
         if args.command == "compile":
+            if args.watch:
+                watch_and_compile(args.file, spec=args.spec, pretty=args.pretty)
+                return 0
+            source = _read_file(args.file)
             return _cmd_compile(source, pretty=args.pretty, spec=args.spec)
-        elif args.command == "validate":
-            return _cmd_validate(source)
-        elif args.command == "ast":
-            return _cmd_ast(source)
-        elif args.command == "graph":
-            return _cmd_graph(source)
         elif args.command == "simulate":
+            source = _read_file(args.file)
             return _cmd_simulate(
                 source,
                 input_file=args.input_file,
@@ -77,6 +77,19 @@ def main(argv: list[str] | None = None) -> int:
                 max_depth=args.max_depth,
                 max_conditions=args.max_conditions,
             )
+        else:
+            source = _read_file(args.file)
+            if args.command == "validate":
+                return _cmd_validate(source)
+            elif args.command == "ast":
+                return _cmd_ast(source)
+            elif args.command == "graph":
+                return _cmd_graph(source)
+            elif args.command == "decompile":
+                return _cmd_decompile(source)
+    except FileNotFoundError:
+        print(f"Error: file not found: {args.file}", file=sys.stderr)
+        return 1
     except A2ELangError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -196,6 +209,17 @@ def _cmd_simulate(
     simulator = Simulator()
     result = simulator.simulate(workflow, input_data=input_data)
     print(result.summary())
+    return 0
+
+
+def _cmd_decompile(source: str) -> int:
+    decompiler = Decompiler()
+    try:
+        dsl = decompiler.decompile(source)
+    except (ValueError, KeyError, json.JSONDecodeError) as e:
+        print(f"Decompile error: {e}", file=sys.stderr)
+        return 1
+    print(dsl)
     return 0
 
 
