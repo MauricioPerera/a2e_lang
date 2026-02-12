@@ -12,7 +12,11 @@ from .decompiler import Decompiler
 from .errors import A2ELangError
 from .graph import generate_mermaid
 from .parser import parse
+from .prompts import format_prompt, list_templates
+from .recovery import parse_with_recovery
+from .scoring import score_syntax
 from .simulator import Simulator
+from .tokens import calculate_budget
 from .validator import Validator
 from .watcher import watch_and_compile
 
@@ -55,11 +59,37 @@ def main(argv: list[str] | None = None) -> int:
     decompile_p = sub.add_parser("decompile", help="Convert JSONL back to .a2e DSL")
     decompile_p.add_argument("file", help="Input JSONL file")
 
+    # recover
+    recover_p = sub.add_parser("recover", help="Auto-fix LLM syntax mistakes")
+    recover_p.add_argument("file", help="Input .a2e file")
+
+    # tokens
+    tokens_p = sub.add_parser("tokens", help="Token budget analysis (DSL vs JSONL)")
+    tokens_p.add_argument("file", help="Input .a2e file")
+
+    # score
+    score_p = sub.add_parser("score", help="Syntax learnability score")
+    score_p.add_argument("file", help="Input .a2e file")
+
+    # prompt
+    prompt_p = sub.add_parser("prompt", help="Generate LLM prompt template")
+    prompt_p.add_argument("template", nargs="?", help="Template name (gpt4, claude, gemini, opensource)")
+    prompt_p.add_argument("--task", dest="task_desc", help="Task description for the prompt")
+    prompt_p.add_argument("--list", action="store_true", dest="list_all", help="List available templates")
+
     args = parser.parse_args(argv)
 
     if not args.command:
         parser.print_help()
         return 1
+
+    # Commands that don't need a file
+    if args.command == "prompt":
+        return _cmd_prompt(
+            template=args.template,
+            task_desc=args.task_desc,
+            list_all=args.list_all,
+        )
 
     try:
         if args.command == "compile":
@@ -87,6 +117,12 @@ def main(argv: list[str] | None = None) -> int:
                 return _cmd_graph(source)
             elif args.command == "decompile":
                 return _cmd_decompile(source)
+            elif args.command == "recover":
+                return _cmd_recover(source)
+            elif args.command == "tokens":
+                return _cmd_tokens(source)
+            elif args.command == "score":
+                return _cmd_score(source)
     except FileNotFoundError:
         print(f"Error: file not found: {args.file}", file=sys.stderr)
         return 1
@@ -220,6 +256,52 @@ def _cmd_decompile(source: str) -> int:
         print(f"Decompile error: {e}", file=sys.stderr)
         return 1
     print(dsl)
+    return 0
+
+
+def _cmd_recover(source: str) -> int:
+    workflow, result = parse_with_recovery(source)
+    if result.was_modified:
+        print(result.summary(), file=sys.stderr)
+        print(file=sys.stderr)
+    print(result.source)
+    return 0
+
+
+def _cmd_tokens(source: str) -> int:
+    budget = calculate_budget(source)
+    print(budget.summary())
+    return 0
+
+
+def _cmd_score(source: str) -> int:
+    score = score_syntax(source)
+    print(score.summary())
+    return 0
+
+
+def _cmd_prompt(
+    template: str | None = None,
+    task_desc: str | None = None,
+    list_all: bool = False,
+) -> int:
+    if list_all or not template:
+        templates = list_templates()
+        print("Available prompt templates:")
+        for t in templates:
+            print(f"  {t['name']:12s}  {t['model_family']}")
+        return 0
+
+    if not task_desc:
+        print("Error: --task is required with a template name", file=sys.stderr)
+        return 1
+
+    result = format_prompt(template, task_desc)
+    print("=== SYSTEM PROMPT ===")
+    print(result["system"])
+    print()
+    print("=== USER PROMPT ===")
+    print(result["user"])
     return 0
 
 

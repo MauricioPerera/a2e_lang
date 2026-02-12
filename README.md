@@ -105,6 +105,11 @@ a2e-lang ast <file>                          # Show parsed AST (debug)
 a2e-lang graph <file>                        # Generate Mermaid flowchart
 a2e-lang simulate <file> [--input data.json] # Dry-run workflow simulation
 a2e-lang decompile <file>                    # Convert JSONL back to .a2e DSL
+a2e-lang recover <file>                      # Auto-fix LLM syntax mistakes
+a2e-lang tokens <file>                       # Token budget analysis (DSL vs JSONL)
+a2e-lang score <file>                        # Syntax learnability score
+a2e-lang prompt [template] --task "..."      # Generate LLM prompt template
+a2e-lang prompt --list                       # List available templates
 ```
 
 > **💡 VSCode Extension**: Install from `vscode-extension/` for syntax highlighting, bracket matching, and code folding. See [vscode-extension/README.md](./vscode-extension/README.md).
@@ -155,14 +160,18 @@ a2e_lang/
 ├── decompiler.py      # JSONL → DSL (reverse compiler)
 ├── watcher.py         # File watcher for auto-recompilation
 ├── lsp.py             # Language Server Protocol (diagnostics + completion)
+├── recovery.py        # Error recovery (auto-fix LLM syntax mistakes)
+├── tokens.py          # Token budget calculator (DSL vs JSONL)
+├── prompts.py         # LLM prompt templates (GPT-4, Claude, Gemini, etc.)
+├── scoring.py         # Syntax learnability scoring
 ├── errors.py          # Error types with source locations
-└── cli.py             # Command-line interface (7 commands)
+└── cli.py             # Command-line interface (11 commands)
 examples/
 ├── simple.a2e         # Basic 3-operation pipeline
 ├── full_workflow.a2e  # All 8 operation types demo
 └── test_workers_ai.py # LLM agent generates a2e-lang from natural language
 vscode-extension/          # VSCode syntax highlighting + LSP client
-tests/                 # 156 tests (pytest)
+tests/                 # 184 tests (pytest)
 ```
 
 ## Architecture

@@ -8,7 +8,7 @@
 - Configurable complexity limits (`max_operations`, `max_depth`, `max_conditions`)
 - Workflow visualization (`a2e-lang graph` → Mermaid)
 - Dry-run simulation (`a2e-lang simulate`)
-- **156 tests**
+- **184 tests**
 
 ## Phase 1: DX & Tooling
 
@@ -19,10 +19,10 @@
 
 ## Phase 2: LLM Optimization
 
-- [ ] **Prompt templates** — Optimized system prompts per model (GPT-4, Claude, Gemma)
-- [ ] **Syntax scoring** — Measure DSL syntax learnability across LLM families
-- [ ] **Error recovery** — Auto-fix common LLM syntax mistakes before parsing
-- [ ] **Token budget calculator** — Estimate token cost of DSL vs raw JSONL
+- [x] **Prompt templates** — Optimized system prompts per model (GPT-4, Claude, Gemini, Llama)
+- [x] **Syntax scoring** — Measure DSL syntax learnability across LLM families
+- [x] **Error recovery** — Auto-fix common LLM syntax mistakes before parsing
+- [x] **Token budget calculator** — Estimate token cost of DSL vs raw JSONL
 
 ## Phase 3: Runtime & Observability
 
